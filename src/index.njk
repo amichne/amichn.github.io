@@ -1,0 +1,44 @@
+---
+layout: base.njk
+title: Home
+---
+<div class="home">
+  <section class="intro">
+    <h1>$ cat /Users/amichne/README.md</h1>
+    <p>Backend engineer currently writing Kotlin.</p>
+
+    <p>Lover of thoughtful design, novel problem-solving, and ambitious goals.</p>
+    <text>This means nothing is shipped and everything is a work in progress.</text>
+
+    <br><br>
+
+
+    <p>Photos for the illusion of being well-rounded</p>
+  </section>
+
+  <section class="recent-posts">
+    <h2>&gt; Recent Posts</h2>
+    <ul class="post-list">
+      {%- for post in collections.posts | reverse -%}
+      <li>
+        <time>{{ post.date | readableDate }}</time>
+        <a href="{{ post.url }}">{{ post.data.title }}</a>
+      </li>
+      {%- endfor -%}
+    </ul>
+    <a href="/posts/" class="more-link">view all posts &rarr;</a>
+  </section>
+
+  <section class="recent-photos">
+    <h2>&gt; Recent Photos</h2>
+    <div class="photo-grid">
+      {%- for photo in collections.photos | reverse -%}
+      <a href="{{ photo.url }}" class="photo-grid-item">
+        <img src="{{ photo.data.image }}" alt="{{ photo.data.title }}" loading="lazy">
+        <span class="photo-title">{{ photo.data.title }}</span>
+      </a>
+      {%- endfor -%}
+    </div>
+    <a href="/photos/" class="more-link">view all photos &rarr;</a>
+  </section>
+</div>

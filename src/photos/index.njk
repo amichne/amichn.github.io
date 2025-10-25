@@ -1,0 +1,14 @@
+---
+layout: base.njk
+title: Photos
+---
+<h1>$ ls photos/</h1>
+<div class="photo-grid">
+  {%- for photo in collections.photos | reverse -%}
+  <a href="{{ photo.url }}" class="photo-grid-item">
+    <img src="{{ photo.data.image }}" alt="{{ photo.data.title }}" loading="lazy">
+    <span class="photo-title">{{ photo.data.title }}</span>
+    <span class="photo-location">{{ photo.data.location }}</span>
+  </a>
+  {%- endfor -%}
+</div>

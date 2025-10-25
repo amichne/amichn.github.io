@@ -1,0 +1,19 @@
+{
+  "name": "terminal-portfolio",
+  "version": "1.0.0",
+  "description": "Personal blog and photo portfolio with terminal aesthetics",
+  "scripts": {
+    "start": "eleventy --serve",
+    "build": "eleventy"
+  },
+  "keywords": ["11ty", "blog", "portfolio"],
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {
+    "@11ty/eleventy": "^2.0.1",
+    "@11ty/eleventy-img": "^3.1.8"
+  },
+  "dependencies": {
+    "luxon": "^3.4.4"
+  }
+}
