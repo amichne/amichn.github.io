@@ -1,17 +1,23 @@
 {
-  "name": "terminal-portfolio",
-  "version": "1.0.0",
+  "name": "Austin Michne",
+  "version": "0.1.0",
   "description": "Personal blog and photo portfolio with terminal aesthetics",
   "scripts": {
     "start": "eleventy --serve",
-    "build": "eleventy"
+    "build": "eleventy",
+    "clean": "rm -rf _site"
   },
-  "keywords": ["11ty", "blog", "portfolio"],
-  "author": "",
-  "license": "MIT",
+  "keywords": [
+    "11ty",
+    "blog",
+    "portfolio"
+  ],
+  "author": "Austin Michne <austin@michne.com>",
+  "license": "GPL-3.0",
   "devDependencies": {
     "@11ty/eleventy": "^2.0.1",
-    "@11ty/eleventy-img": "^3.1.8"
+    "@11ty/eleventy-img": "^3.1.8",
+    "@11ty/eleventy-plugin-syntaxhighlight": "^5.0.2"
   },
   "dependencies": {
     "luxon": "^3.4.4"

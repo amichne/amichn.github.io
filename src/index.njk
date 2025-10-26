@@ -3,42 +3,55 @@ layout: base.njk
 title: Home
 ---
 <div class="home">
-  <section class="intro">
-    <h1>$ cat /Users/amichne/README.md</h1>
-    <p>Backend engineer currently writing Kotlin.</p>
+    <section class="intro">
+        <h1></h1>
+        <h1>╭─ austin@michne.com ~/code/personal - [main]
+            <br>
+            ╰─➤ cat /Users/amichne/README.md
+        </h1>
 
-    <p>Lover of thoughtful design, novel problem-solving, and ambitious goals.</p>
-    <text>This means nothing is shipped and everything is a work in progress.</text>
+        <h2> > Backend Engineer @ American Express</h2>
+        <h2> > Lover of thoughtfully designed and widely generalizable solutions</h2>
 
-    <br><br>
+    </section>
 
-
-    <p>Photos for the illusion of being well-rounded</p>
-  </section>
-
-  <section class="recent-posts">
-    <h2>&gt; Recent Posts</h2>
-    <ul class="post-list">
-      {%- for post in collections.posts | reverse -%}
-      <li>
-        <time>{{ post.date | readableDate }}</time>
-        <a href="{{ post.url }}">{{ post.data.title }}</a>
-      </li>
-      {%- endfor -%}
-    </ul>
-    <a href="/posts/" class="more-link">view all posts &rarr;</a>
-  </section>
-
-  <section class="recent-photos">
-    <h2>&gt; Recent Photos</h2>
-    <div class="photo-grid">
-      {%- for photo in collections.photos | reverse -%}
-      <a href="{{ photo.url }}" class="photo-grid-item">
-        <img src="{{ photo.data.image }}" alt="{{ photo.data.title }}" loading="lazy">
-        <span class="photo-title">{{ photo.data.title }}</span>
-      </a>
-      {%- endfor -%}
-    </div>
-    <a href="/photos/" class="more-link">view all photos &rarr;</a>
-  </section>
+    <section class="recent-posts">
+        <h2>&RightTeeArrow; Recent Posts</h2>
+        <ul class="post-list">
+            {%- for post in collections.posts | reverse -%}
+                <li>
+                    <time>{{ post.date | readableDate }}</time>
+                    <a href="{{ post.url }}">{{ post.data.title }}</a>
+                </li>
+            {%- endfor -%}
+        </ul>
+        <a href="/posts/" class="more-link">view all posts &rarr;</a>
+    </section>
+    <section class="recent-photos">
+        <h2> &percnt; open &dollar;((&dollar;RANDOM &percnt; &dollar;#PHOTOS[@]}))</h2>
+        <div class="photo-main">
+            <a href="#" id="random-photo-link" class="photo-main"> <img id="random-photo-img" src="" alt="Random photo"
+                                                                        loading="lazy"> </a>
+        </div>
+        <a href="/photos/" class="more-link">view all photos &rarr;</a>
+    </section>
 </div>
+
+<script>
+    (function () {
+        const photos = [
+            {%- for photo in collections.photos -%}
+                {
+                    url: "{{ photo.url }}",
+                    image: "{{ photo.data.image }}",
+                    date: "{{ photo.data.date | readableDate }}"
+                }{% if not loop.last %},{% endif %}
+            {%- endfor -%}
+        ];
+
+        const randomPhoto = photos[Math.floor(Math.random() * photos.length)];
+        document.getElementById('random-photo-link').href = randomPhoto.url;
+        document.getElementById('random-photo-img').src = randomPhoto.image;
+        document.getElementById('random-photo-img').alt = 'Photo from ' + randomPhoto.date;
+    })();
+</script>
