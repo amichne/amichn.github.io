@@ -719,6 +719,6 @@ And in my experience, that's worth the cost.
 - **[Making Illegal States Unrepresentable](https://blog.janestreet.com/effective-ml-revisited/)** by Yaron Minsky - Jane Street's approach to designing with types
 - **[Type Safety Back and Forth](https://www.parsonsmatt.org/2017/10/11/type_safety_back_and_forth.html)** by Matt Parsons - How to thread types through full-stack applications
 
-The Konditional source code is available at [GitHub repository URL]. The architecture documentation (`docs/architecture.md`) provides deeper technical details on the implementation.
+The Konditional source code is available at [https://github.com/amichne/konditional]. The architecture documentation (`docs/architecture.md`) provides deeper technical details on the implementation.
 
 ---
