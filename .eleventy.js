@@ -1,6 +1,9 @@
 const Image = require("@11ty/eleventy-img");
 const {DateTime} = require("luxon");
 const syntaxHighlight = require("@11ty/eleventy-plugin-syntaxhighlight");
+const markdownIt = require("markdown-it");
+const markdownItAnchor = require("markdown-it-anchor");
+const pluginTOC = require("eleventy-plugin-toc");
 
 async function imageShortcode(src, alt, sizes = "100vw") {
     const metadata = await Image(src, {
@@ -23,6 +26,11 @@ async function imageShortcode(src, alt, sizes = "100vw") {
 module.exports = function (eleventyConfig) {
     // Plugins
     eleventyConfig.addPlugin(syntaxHighlight);
+    eleventyConfig.addPlugin(pluginTOC, {
+        tags: ['h2', 'h3'],
+        ul: true,
+        flat: false
+    });
 
     // Copy assets
     eleventyConfig.addPassthroughCopy("src/css");
@@ -80,6 +88,20 @@ module.exports = function (eleventyConfig) {
         return collectionApi.getFilteredByGlob("src/photos/*.md").reverse();
     });
 
+    // Configure markdown-it with anchor plugin
+    const markdownLib = markdownIt({ html: true })
+        .use(markdownItAnchor, {
+            permalink: markdownItAnchor.permalink.headerLink({
+                safariReaderFix: true,
+            }),
+            level: [2, 3],
+            slugify: (s) => s.toLowerCase()
+                .replace(/[^\w\s-]/g, '')
+                .replace(/\s+/g, '-')
+        });
+
+    eleventyConfig.setLibrary("md", markdownLib);
+
     return {
         dir: {
             input: "src",
@@ -90,4 +112,4 @@ module.exports = function (eleventyConfig) {
         markdownTemplateEngine: "njk",
         htmlTemplateEngine: "njk"
     };
-};
+}
