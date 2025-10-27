@@ -1,4 +1,4 @@
-# Terminal Portfolio
+# Personal Site/Blog
 
 Minimalist blog and photo portfolio built with 11ty.
 
