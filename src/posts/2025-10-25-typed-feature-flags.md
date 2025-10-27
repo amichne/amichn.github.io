@@ -1,11 +1,18 @@
 ---
-title: "Feature Flags That Actually Use The Type System"
+title: "No (More) Strings Attached: Type-Safe Feature Flags"
 date: 2025-10-25
 layout: post.njk 
 tags: [ "type-safe", "design", "framework" ]
 ---
 
-# Feature Flags That Actually Use The Type System
+# No (More) Strings Attached: Type-Safe Feature Flags
+## Un-un-Konditional Love
+
+_This post explores how Konditional, a type-safe feature flag library, uses the Kotlin type system to prevent runtime errors and improve code quality._
+
+_It is heavily inspired by the ["Parse, Don't Validate" essay by Alexis King](https://lexi-lambda.github.io/blog/2019/11/05/parse-don-t-validate/)._
+
+## We Need to Talk (about feature flags)
 
 If you've worked with feature flags in production, you've probably written code like this:
 
@@ -32,7 +39,7 @@ These aren't bad programmers. These are good programmers working with bad tools.
 
 Let me show you a different approach.
 
-## What We're Actually Trying To Do
+## Imagine What We Could Be
 
 Feature flags serve a simple purpose: they return different values for different contexts. You might want dark mode enabled for premium users, or the new checkout flow shown to 25% of iOS users, or a different API endpoint for web versus mobile platforms.
 
@@ -58,7 +65,7 @@ fun <S : Any, C : Context> C.evaluate(key: Conditional<S, C>): S
 
 Notice what changed: we've encoded the relationship between a specific flag, its value type, and its context type **in the signature**. If you call `context.evaluate(Features.DARK_MODE)`, you get a `Boolean`. If you call `context.evaluate(ApiConfig.ENDPOINT)`, you get a `String`. No casting, no null checks, no runtime surprises.
 
-## The Problem With Stringly-Typed Feature Flags
+## It's not you, it's Stringly-Typed Feature Flags
 
 Let's look at what goes wrong with traditional approaches. Here's typical feature flag code:
 
@@ -108,7 +115,7 @@ val darkMode = ldClient.boolVariation("dark-mode", user, true) // Oops
 
 These aren't theoretical problems. They happen in real codebases, all the time, and the type system has no way to help you catch them.
 
-## Parse, Don't Validate (Applied to Feature Flags)
+## (Don't) Validate me
 
 In her excellent essay "Parse, Don't Validate," Alexis King argues that validation should **parse** inputs into more refined types, preserving the information that validation succeeded within the type system. The classic example is:
 
@@ -149,7 +156,7 @@ Now the type system knows:
 2. It returns `String` (encoded in `Conditional<String, Context>`)
 3. The result is never null (the signature is `C.evaluate(key: Conditional<S, C>): S`, not `S?`)
 
-## How We Got There: The Type Safety Architecture
+## Wow, you're so strong(ly typed)
 
 Let me show you how Konditional achieves this. The journey from string-based flags to type-safe flags required solving several interconnected problems.
 
@@ -168,17 +175,19 @@ But now you've lost type information. When you retrieve `flags["dark-mode"]`, yo
 val darkMode = flags["dark-mode"] as Boolean // Unchecked cast warning
 ```
 
-Konditional's solution is the `FlagEntry` wrapper (from `Flags.kt:19-27`):
+Konditional's solution is the `FlagEntry` wrapper (from [`Flags.kt:19-27`](https://github.com/amichne/konditional/blob/3e67c1609e5b81f10956e3d87cb567db2513b5f1/src/main/kotlin/io/amichne/konditional/core/Flags.kt#L19-L27)):
 
 ```kotlin
 class FlagEntry<S : Any, C : Context>(
-    val condition: Condition<S, C>
+    val flag: ContextualFeatureFlag<S, C>
 ) {
-    fun evaluate(context: C): S = condition.evaluate(context)
+    fun evaluate(context: C): S = flag.evaluate(context)
 }
 ```
 
-Each flag is wrapped in a `FlagEntry` that maintains the relationship between its value type `S` and context type `C`. The storage map becomes:
+Each flag is wrapped in a `FlagEntry` that maintains the relationship between its value type `S` and context type `C`. The actual flag implementation is a `FlagDefinition<S, C>` (previously called `Condition`), but it's exposed through the minimal `ContextualFeatureFlag<S, C>` interface. This hides implementation details like bucketing algorithms and rule matching while preserving type safety.
+
+The storage map becomes:
 
 ```kotlin
 private val snapshot: Map<Conditional<*, *>, FlagEntry<*, *>>
@@ -237,15 +246,15 @@ Configuration is where things get interesting. We want a DSL that looks like thi
 ```kotlin
 Features.DARK_MODE with {
     default(false)
-    boundary {
+    rule {
         platforms(Platform.IOS)
     } implies true
 }
 ```
 
-Notice the `implies` keyword: it connects a rule (the `boundary { }` block) with a value (`true`). But how do we ensure the value matches the flag's type?
+Notice the `implies` keyword: it connects a rule (the `rule { }` block) with a value (`true`). But how do we ensure the value matches the flag's type?
 
-The answer is in the generic parameters. Here's the `FlagBuilder` signature (from `FlagBuilder.kt:19-83`):
+The answer is in the generic parameters. Here's the `FlagBuilder` signature (from [`FlagBuilder.kt:19-85`](https://github.com/amichne/konditional/blob/3e67c1609e5b81f10956e3d87cb567db2513b5f1/src/main/kotlin/io/amichne/konditional/builders/FlagBuilder.kt#L19-L85)):
 
 ```kotlin
 class FlagBuilder<S : Any, C : Context>(
@@ -253,8 +262,8 @@ class FlagBuilder<S : Any, C : Context>(
 ) {
     fun default(value: S) { ... }
 
-    infix fun RuleBuilder<C>.implies(value: S): Surjection<S, C> {
-        return Surjection(this.build(), value)
+    infix fun Rule<C>.implies(value: S): TargetedValue<S, C> {
+        return TargetedValue(this, value)
     }
 }
 ```
@@ -273,7 +282,7 @@ If you try:
 ```kotlin
 Features.DARK_MODE with {
     default(false)
-    boundary { } implies "wrong type"  // Compiler error!
+    rule { } implies "wrong type"  // Compiler error!
 }
 ```
 
@@ -297,7 +306,7 @@ if (Random.nextDouble() < 0.25) {
 
 But this is non-deterministic: the same user gets a different result each time. You need stable, deterministic bucketing.
 
-Konditional uses SHA-256 hashing (from `Condition.kt:55-81`):
+Konditional uses SHA-256 hashing (from [`FlagDefinition.kt:69-83`](https://github.com/amichne/konditional/blob/3e67c1609e5b81f10956e3d87cb567db2513b5f1/src/main/kotlin/io/amichne/konditional/core/FlagDefinition.kt#L69-L83)):
 
 ```kotlin
 private fun stableBucket(flagKey: String, id: StableId, salt: String): Int {
@@ -318,9 +327,9 @@ private fun stableBucket(flagKey: String, id: StableId, salt: String): Int {
 
 Then bucketing becomes:
 ```kotlin
-fun isInEligibleSegment(rampUp: RampUp): Boolean {
+fun isInEligibleSegment(rollout: Rollout): Boolean {
     val bucket = stableBucket(flagKey, stableId, salt)
-    return bucket < (rampUp.value * 100).roundToInt()
+    return bucket < (rollout.value * 100).roundToInt()
 }
 ```
 
@@ -345,7 +354,7 @@ val context = mapOf(
 
 This has all the problems of string-based flags: typos, type mismatches, no refactoring support.
 
-Konditional makes context strongly-typed (from `Context.kt:14-33`):
+Konditional makes context strongly-typed (from [`Context.kt:14-33`](https://github.com/amichne/konditional/blob/3e67c1609e5b81f10956e3d87cb567db2513b5f1/src/main/kotlin/io/amichne/konditional/context/Context.kt#L14-L33)):
 
 ```kotlin
 interface Context {
@@ -358,7 +367,7 @@ interface Context {
 
 Now matching becomes type-safe:
 ```kotlin
-boundary {
+rule {
     platforms(Platform.IOS, Platform.ANDROID)  // Enum, not string
     locales(AppLocale.EN_US)                   // Enum, not string
     versions {
@@ -379,38 +388,38 @@ When you have multiple rules, you need an ordering. Konditional uses **specifici
 For example:
 ```kotlin
 // Rule A: iOS users on version 2.0+
-boundary {
+rule {
     platforms(Platform.IOS)
     versions { min(2, 0) }
 } implies true
 
 // Rule B: iOS users (any version)
-boundary {
+rule {
     platforms(Platform.IOS)
 } implies false
 ```
 
 An iOS user on version 2.5 matches both rules, but Rule A is more specific (2 constraints vs 1), so it wins.
 
-Specificity is calculated simply (from `Rule.kt:80-83`):
+Specificity is calculated by the `UserClientEvaluator` (from [`UserClientEvaluator.kt`](https://github.com/amichne/konditional/blob/3e67c1609e5b81f10956e3d87cb567db2513b5f1/src/main/kotlin/io/amichne/konditional/rules/evaluable/UserClientEvaluator.kt)):
 ```kotlin
-private fun computeInternalSpecificity(): Int =
+internal override fun specificity(): Int =
     (if (locales.isNotEmpty()) 1 else 0) +
     (if (platforms.isNotEmpty()) 1 else 0) +
     (if (versionRange.hasBounds()) 1 else 0)
 ```
 
-Rules are pre-sorted at configuration time (from `Condition.kt:26-29`):
+Rules are pre-sorted at configuration time (from [`FlagDefinition.kt:28-31`](https://github.com/amichne/konditional/blob/3e67c1609e5b81f10956e3d87cb567db2513b5f1/src/main/kotlin/io/amichne/konditional/core/FlagDefinition.kt#L28-L31)):
 ```kotlin
-val sortedSurjections = bounds.sortedWith(
-    compareByDescending<Surjection<S, C>> { it.rule.internalSpecificity() }
+val targetedValues = bounds.sortedWith(
+    compareByDescending<TargetedValue<S, C>> { it.rule.specificity() }
         .thenBy { it.rule.note ?: "" }
 )
 ```
 
 Then evaluation is simple: iterate through sorted rules, return the first match. No complex precedence rules, no ambiguity.
 
-## Why We Made These Choices
+## It's complicated (but hear me out)
 
 Every design decision in Konditional stems from one principle: **make illegal states unrepresentable**. Let me walk through the key choices and their motivation.
 
@@ -452,7 +461,7 @@ val darkMode = Features.DARK_MODE.evaluate(context) as Boolean
 
 This loses all type safety. Konditional instead threads the type parameters through the entire system:
 ```
-Conditional<S, C> → Condition<S, C> → Surjection<S, C> → Rule<C>
+Conditional<S, C> → FlagDefinition<S, C> → TargetedValue<S, C> → Rule<C>
 ```
 
 At every step, the compiler knows the exact types involved.
@@ -465,7 +474,42 @@ At every step, the compiler knows the exact types involved.
 
 **Why 10,000 buckets?** Allows 0.01% precision in rollout percentages, which is fine-grained enough for gradual rollouts without being excessive.
 
-### Choice 4: Atomic snapshots for concurrency
+### Choice 4a: Evaluable abstraction for composable rules
+
+**Why create an abstraction for rule evaluation?** Initially, Rule was a simple data class. But as the library evolved, we needed extensibility—custom matching logic for domain-specific requirements.
+
+The `Evaluable<C>` abstraction (from [`Evaluable.kt:22-46`](https://github.com/amichne/konditional/blob/3e67c1609e5b81f10956e3d87cb567db2513b5f1/src/main/kotlin/io/amichne/konditional/rules/evaluable/Evaluable.kt#L22-L46)) provides the foundation:
+
+```kotlin
+abstract class Evaluable<C : Context> {
+    internal open fun matches(context: C): Boolean = true
+    internal open fun specificity(): Int = 0
+}
+```
+
+This enables composition. The `Rule` class composes two evaluators:
+- `UserClientEvaluator`: handles standard locale/platform/version matching
+- `extension`: custom evaluation logic for domain-specific rules
+
+```kotlin
+data class Rule<C : Context>(
+    val rollout: Rollout,
+    val userClientEvaluator: UserClientEvaluator<C>,
+    val extension: Evaluable<C>
+) : Evaluable<C>() {
+    override fun matches(context: C): Boolean =
+        userClientEvaluator.matches(context) && extension.matches(context)
+
+    override fun specificity(): Int =
+        userClientEvaluator.specificity() + extension.specificity()
+}
+```
+
+This design allows extending rule matching without modifying the core framework. Users can create custom evaluators that compose with the standard client targeting.
+
+**Why mark methods as `internal`?** The `matches()` and `specificity()` methods are implementation details. External code shouldn't call them directly—they're invoked internally during flag evaluation. This reduces the public API surface and prevents misuse.
+
+### Choice 5: Atomic snapshots for concurrency
 
 **Why not locks?** Locks on the read path hurt performance. Feature flag evaluation happens in hot paths—every request might evaluate dozens of flags.
 
@@ -476,7 +520,7 @@ Atomic snapshots (`AtomicReference<Snapshot>`) provide:
 - Simple update model (create new snapshot, swap it in)
 - Consistent view (all flags from same snapshot)
 
-From `Flags.kt:29-30`:
+From [`Flags.kt:29-30`](https://github.com/amichne/konditional/blob/3e67c1609e5b81f10956e3d87cb567db2513b5f1/src/main/kotlin/io/amichne/konditional/core/Flags.kt#L29-L30):
 ```kotlin
 private val current = AtomicReference(Snapshot(emptyMap()))
 ```
@@ -491,7 +535,7 @@ Writes are:
 current.set(newSnapshot)  // Atomic replacement
 ```
 
-### Choice 5: Context polymorphism
+### Choice 6: Context polymorphism
 
 **Why not fix the context type?** Different applications need different context. An enterprise SaaS app might need organization IDs and subscription tiers. A mobile game might need player level and in-game currency.
 
@@ -519,54 +563,42 @@ enum class EnterpriseFeatures(override val key: String)
 
 The type system ensures you can't evaluate an `EnterpriseFeatures` flag with a regular `Context`—you need an `EnterpriseContext`.
 
-### Choice 6: Template method pattern for custom rules
+### Choice 7: Composition over inheritance for custom rules
 
-The base `Rule<C>` class handles locales, platforms, and versions. But what if you need custom matching logic?
-
-From `Rule.kt:31-145`, the class is designed for extension:
+With the `Evaluable` abstraction in place, custom matching logic becomes straightforward through composition. You create custom evaluators that extend `Evaluable<C>`:
 
 ```kotlin
-open class Rule<C : Context>(
-    val rampUp: RampUp,
-    val locales: Set<AppLocale> = emptySet(),
-    val platforms: Set<Platform> = emptySet(),
-    val versionRange: VersionRange = Unbounded,
-    val note: String? = null,
-) {
-    final fun internalMatches(context: C): Boolean {
-        return matchesBaseAttributes(context) && matches(context)
-    }
+data class SubscriptionEvaluator<C : EnterpriseContext>(
+    val requiredTier: SubscriptionTier
+) : Evaluable<C>() {
+    override fun matches(context: C): Boolean =
+        context.subscriptionTier >= requiredTier
 
-    protected open fun matches(context: C): Boolean = true
-
-    protected open fun specificity(): Int = 0
+    override fun specificity(): Int = 1
 }
 ```
 
-This is the template method pattern: `internalMatches` is `final` (ensuring base attribute checking always happens), but `matches` is `open` (allowing custom logic). You can create a wrapper:
+Then compose it with a rule:
 
 ```kotlin
-data class EnterpriseRule(
-    val rule: Rule<EnterpriseContext>,
-    val requiredTier: SubscriptionTier? = null,
-) {
-    fun matches(context: EnterpriseContext): Boolean {
-        if (!rule.internalMatches(context)) return false
-        if (requiredTier != null && context.subscriptionTier < requiredTier) return false
-        return true
-    }
-}
+Rule(
+    rollout = Rollout.of(100.0),
+    platforms = setOf(Platform.WEB),
+    extension = SubscriptionEvaluator(SubscriptionTier.PREMIUM)
+)
 ```
 
-**Why wrapper instead of inheritance?** Composition over inheritance. Rules are data (they'll be serialized to JSON for remote configuration), and inheritance complicates serialization. The wrapper pattern keeps `Rule` simple while allowing extensibility.
+This rule matches web platform users with premium subscriptions. The specificity is 1 (platform) + 1 (subscription tier) = 2.
 
-### Choice 7: Serialization support
+**Why composition instead of inheritance?** Rules are data—they're serialized to JSON for remote configuration. Inheritance complicates serialization and creates tight coupling. Composition keeps `Rule` simple while enabling unlimited extensibility through custom `Evaluable` implementations.
+
+### Choice 8: Serialization support
 
 Recent commits (commit `efdc912`) added serialization. Why?
 
 In production, you don't hardcode flag configuration—you fetch it from a remote service. This allows changing flags without deploying code.
 
-Konditional's serialization (from `SnapshotSerializer.kt`) converts:
+Konditional's serialization (from [`SnapshotSerializer.kt`](https://github.com/amichne/konditional/blob/3e67c1609e5b81f10956e3d87cb567db2513b5f1/src/main/kotlin/io/amichne/konditional/serialization/SnapshotSerializer.kt)) converts:
 ```
 Snapshot → SerializableSnapshot → JSON
 ```
@@ -603,18 +635,18 @@ object ConditionalRegistry {
 This allows reconstructing type information:
 ```kotlin
 val conditional = ConditionalRegistry.get(key)
-val condition = deserializeCondition(json, conditional)
+val flagDefinition = deserializeFlagDefinition(json, conditional)
 // Type parameters recovered from registered Conditional
 ```
 
-This is another "parse, don't validate" moment: we parse JSON back into typed `Condition<S, C>` objects, using the registry as evidence of types.
+This is another "parse, don't validate" moment: we parse JSON back into typed `FlagDefinition<S, C>` objects, using the registry as evidence of types.
 
-## What This Means In Practice
+## This could be us
 
 Let's contrast the before and after for a real scenario: rolling out a new checkout flow to 25% of iOS users on version 2.0+.
 
 **Traditional approach:**
-```kotlin
+```json5
 // Configuration (separate system, maybe JSON)
 {
   "new-checkout": {
@@ -625,7 +657,9 @@ Let's contrast the before and after for a real scenario: rolling out a new check
     ]
   }
 }
+```
 
+```kotlin
 // Application code
 val isEnabled = ldClient.boolVariation(
     "new-checkout",
@@ -657,10 +691,10 @@ config {
     Features.NEW_CHECKOUT with {
         default(false)
 
-        boundary {
+        rule {
             platforms(Platform.IOS)
             versions { min(2, 0) }
-            rampUp = RampUp.of(25.0)
+            rollout = Rollout.of(25.0)
         } implies true
     }
 }
@@ -677,9 +711,9 @@ Benefits:
 - Type is `Boolean`, guaranteed by the compiler
 - All flags visible in the `Features` enum
 - Platform and version are strongly-typed
-- Rollout percentage is type-safe (`RampUp.of(25.0)` validates 0-100 range)
+- Rollout percentage is type-safe (`Rollout.of(25.0)` validates 0-100 range)
 
-## The Downsides (Because Nothing Is Free)
+## Love hurts (Because Nothing Is Free)
 
 Alright, I'll confess: this approach has costs.
 
@@ -699,7 +733,7 @@ Alright, I'll confess: this approach has costs.
 
 **Mitigation**: The type system guides you. If you try to do something wrong, you get a compile error with a clear message. This is better than runtime errors in production.
 
-## Where This Leads
+## Happily Ever After?
 
 Konditional is built on a simple idea: **feature flags are functions from context to values, and functions have types**. By encoding these types in Kotlin's type system, we get compile-time safety, IDE support, and refactoring tools for free.
 
@@ -719,6 +753,8 @@ And in my experience, that's worth the cost.
 - **[Making Illegal States Unrepresentable](https://blog.janestreet.com/effective-ml-revisited/)** by Yaron Minsky - Jane Street's approach to designing with types
 - **[Type Safety Back and Forth](https://www.parsonsmatt.org/2017/10/11/type_safety_back_and_forth.html)** by Matt Parsons - How to thread types through full-stack applications
 
-The Konditional source code is available at [https://github.com/amichne/konditional]. The architecture documentation (`docs/architecture.md`) provides deeper technical details on the implementation.
+[Konditional](https://github.com/amichne/konditional) is available under the [MIT License](https://opensource.org/licenses/MIT).
+
+The architecture documentation ([`docs/architecture.md`](https://github.com/amichne/konditional/blob/3e67c1609e5b81f10956e3d87cb567db2513b5f1/docs/architecture.md)) provides deeper technical details on the implementation.
 
 ---
