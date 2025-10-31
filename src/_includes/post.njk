@@ -5,6 +5,125 @@ layout: base.njk
   // Add class to body for post layout styling
   document.body.classList.add('has-toc');
 
+  // Initialize collapsible TOC
+  document.addEventListener('DOMContentLoaded', function() {
+    const tocWrapper = document.querySelector('.toc-wrapper');
+    if (!tocWrapper) return;
+
+    const tocNav = tocWrapper.querySelector('.toc');
+    if (!tocNav) return;
+
+    const tocUl = tocNav.querySelector('ul');
+    if (!tocUl) return;
+
+    // Find all top-level list items (h2 sections) - direct children of the main ul
+    const topLevelItems = Array.from(tocUl.children);
+
+    // Mark items with children and add toggle functionality
+    topLevelItems.forEach(item => {
+      const nestedList = item.querySelector('ul');
+
+      // If this h2 has h3 children, mark it as collapsible
+      if (nestedList && nestedList.children.length > 0) {
+        item.classList.add('has-children');
+
+        // Add click handler to toggle (click on arrow area, not the link)
+        const link = item.querySelector(':scope > a');
+        if (link) {
+          // Add a toggle button inside the link, before the text
+          const toggleBtn = document.createElement('span');
+          toggleBtn.className = 'toc-toggle';
+          toggleBtn.innerHTML = '> ';
+          link.insertBefore(toggleBtn, link.firstChild);
+
+          toggleBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            item.classList.toggle('expanded');
+          });
+        }
+      }
+    });
+
+    // Track scroll position and auto-expand/collapse sections
+    let ticking = false;
+
+    function updateActiveSections() {
+      // Get all h2 and h3 headers
+      const headers = document.querySelectorAll('.post-content h2, .post-content h3');
+      const scrollPos = window.scrollY + 100; // Offset for better UX
+
+      let currentH2 = null;
+      let currentH3 = null;
+
+      // Find which section we're currently in
+      headers.forEach(header => {
+        if (header.offsetTop <= scrollPos) {
+          if (header.tagName === 'H2') {
+            currentH2 = header;
+            currentH3 = null; // Reset h3 when we hit a new h2
+          } else if (header.tagName === 'H3') {
+            currentH3 = header;
+          }
+        }
+      });
+
+      // Remove all active classes
+      tocWrapper.querySelectorAll('a').forEach(link => {
+        link.classList.remove('active');
+      });
+
+      // Collapse all sections first
+      topLevelItems.forEach(item => {
+        if (item.classList.contains('has-children')) {
+          item.classList.remove('expanded');
+        }
+      });
+
+      // Expand and highlight the current section
+      if (currentH2) {
+        const h2Id = currentH2.id;
+        if (h2Id) {
+          const h2Link = tocWrapper.querySelector(`a[href="#${h2Id}"]`);
+          if (h2Link) {
+            const parentLi = h2Link.closest('li');
+            if (parentLi && parentLi.classList.contains('has-children')) {
+              parentLi.classList.add('expanded');
+            }
+
+            // If we're in a specific h3, highlight that, otherwise highlight the h2
+            if (currentH3) {
+              const h3Id = currentH3.id;
+              if (h3Id) {
+                const h3Link = tocWrapper.querySelector(`a[href="#${h3Id}"]`);
+                if (h3Link) {
+                  h3Link.classList.add('active');
+                }
+              }
+            } else {
+              h2Link.classList.add('active');
+            }
+          }
+        }
+      }
+
+      ticking = false;
+    }
+
+    function requestTick() {
+      if (!ticking) {
+        window.requestAnimationFrame(updateActiveSections);
+        ticking = true;
+      }
+    }
+
+    // Listen to scroll events
+    window.addEventListener('scroll', requestTick);
+
+    // Initial update
+    updateActiveSections();
+  });
+
 </script>
 <script src="https://cdn.jsdelivr.net/gh/MarketingPipeline/Markdown-Tag/markdown-tag-GitHub.js"></script>
 
