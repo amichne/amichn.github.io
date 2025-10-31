@@ -7,5 +7,7 @@
     <orderEntry type="sourceFolder" forTests="false" />
     <orderEntry type="library" name="PowerlineFonts" level="application" />
     <orderEntry type="library" name="highlight.js" level="application" />
+    <orderEntry type="library" name="inter" level="application" />
+    <orderEntry type="library" name="markdown-tag-GitHub" level="application" />
   </component>
 </module>

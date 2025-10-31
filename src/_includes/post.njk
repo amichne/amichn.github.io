@@ -4,12 +4,14 @@ layout: base.njk
 <script>
   // Add class to body for post layout styling
   document.body.classList.add('has-toc');
+
 </script>
+<script src="https://cdn.jsdelivr.net/gh/MarketingPipeline/Markdown-Tag/markdown-tag-GitHub.js"></script>
 
 <div class="post-container">
     <article class="post">
         <header class="post-header">
-            <h1>{{ title }}</h1>
+            <h1 style="font-family: 'Source Code Pro', monospace, serif, sans-serif;">{{ title }}</h1>
             <time datetime="{{ date }}">{{ date | readableDate }}</time>
             {% if tags %}
                 <div class="tags">
@@ -35,67 +37,3 @@ layout: base.njk
     </div>
     {% endif %}
 </div>
-{#<script>#}
-{#  // Add class to body for post layout styling#}
-{#  document.body.classList.add('has-toc');#}
-{#</script>#}
-{##}
-{#<div class="post-container">#}
-{#  <article class="post">#}
-{#    <header class="post-header">#}
-{#      <h1>{{ title }}</h1>#}
-{#      <time datetime="{{ date }}">{{ date | readableDate }}</time>#}
-{#      {% if tags %}#}
-{#      <div class="tags">#}
-{#        {% for tag in tags %}#}
-{#          {% if tag != "posts" %}#}
-{#          <span class="tag">{{ tag }}</span>#}
-{#          {% endif %}#}
-{#        {% endfor %}#}
-{#      </div>#}
-{#      {% endif %}#}
-{#    </header>#}
-{##}
-{#    <div class="post-content">#}
-{#      {{ content | safe }}#}
-{#    </div>#}
-{#  </article>#}
-{##}
-{#  <nav class="table-of-contents" id="toc">#}
-{#    <h2>Table of Contents</h2>#}
-{#    <ul id="toc-list"></ul>#}
-{#  </nav>#}
-{#</div>#}
-{##}
-{#<script>#}
-{#  // Generate table of contents from headings#}
-{#  (function() {#}
-{#    const content = document.querySelector('.post-content');#}
-{#    const tocList = document.getElementById('toc-list');#}
-{#    const toc = document.getElementById('toc');#}
-{#    const headings = content.querySelectorAll('h2, h3');#}
-{##}
-{#    if (headings.length === 0) {#}
-{#      toc.style.display = 'none';#}
-{#      document.body.classList.remove('has-toc');#}
-{#      return;#}
-{#    }#}
-{##}
-{#    headings.forEach((heading, index) => {#}
-{#      // Add an ID to the heading if it doesn't have one#}
-{#      if (!heading.id) {#}
-{#        heading.id = 'heading-' + index;#}
-{#      }#}
-{##}
-{#      const li = document.createElement('li');#}
-{#      li.className = heading.tagName.toLowerCase();#}
-{##}
-{#      const link = document.createElement('a');#}
-{#      link.href = '#' + heading.id;#}
-{#      link.textContent = heading.textContent;#}
-{##}
-{#      li.appendChild(link);#}
-{#      tocList.appendChild(li);#}
-{#    });#}
-{#  })();#}
-{#</script>#}

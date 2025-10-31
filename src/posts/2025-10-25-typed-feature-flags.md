@@ -5,10 +5,9 @@ layout: post.njk
 tags: [ "type-safe", "design", "framework" ]
 ---
 
-# No (More) Strings Attached: Type-Safe Feature Flags
-## Un-un-Konditional Love
+# Un-un-Konditional Love
 
-_This post explores how [Konditional](https://amichne.github.io/konditional/), a type-safe feature flag library, uses the Kotlin type system to prevent runtime errors and improve code quality._
+_This post explores how [Konditional](https://amichne.github.io/konditional/), uses the Kotlin type system to type-safe feature flag management._
 
 _It is heavily inspired by the ["Parse, Don't Validate"](https://lexi-lambda.github.io/blog/2019/11/05/parse-don-t-validate/) essay by Alexis King._
 
